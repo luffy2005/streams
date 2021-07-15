@@ -41,6 +41,7 @@ Object.assign(exports, {
   ReadableByteStreamControllerRespondWithNewView,
   ReadableStreamAddReadRequest,
   ReadableStreamBYOBReaderRead,
+  ReadableStreamBYOBReaderReadFully,
   ReadableStreamCancel,
   ReadableStreamClose,
   ReadableStreamDefaultControllerCallPullIfNeeded,
@@ -924,7 +925,21 @@ function ReadableStreamBYOBReaderRead(reader, view, readIntoRequest) {
   if (stream._state === 'errored') {
     readIntoRequest.errorSteps(stream._storedError);
   } else {
-    ReadableByteStreamControllerPullInto(stream._controller, view, readIntoRequest);
+    ReadableByteStreamControllerPullInto(stream._controller, view, readIntoRequest, false);
+  }
+}
+
+function ReadableStreamBYOBReaderReadFully(reader, view, readIntoRequest) {
+  const stream = reader._stream;
+
+  assert(stream !== undefined);
+
+  stream._disturbed = true;
+
+  if (stream._state === 'errored') {
+    readIntoRequest.errorSteps(stream._storedError);
+  } else {
+    ReadableByteStreamControllerPullInto(stream._controller, view, readIntoRequest, true);
   }
 }
 
@@ -1245,7 +1260,7 @@ function ReadableByteStreamControllerClose(controller) {
 
   if (controller._pendingPullIntos.length > 0) {
     const firstPendingPullInto = controller._pendingPullIntos[0];
-    if (firstPendingPullInto.bytesFilled > 0) {
+    if (firstPendingPullInto.bytesFilled % firstPendingPullInto.elementSize !== 0) {
       const e = new TypeError('Insufficient bytes to fill elements in the given buffer');
       ReadableByteStreamControllerError(controller, e);
 
@@ -1262,7 +1277,10 @@ function ReadableByteStreamControllerCommitPullIntoDescriptor(stream, pullIntoDe
 
   let done = false;
   if (stream._state === 'closed') {
-    assert(pullIntoDescriptor.bytesFilled === 0);
+    assert(pullIntoDescriptor.bytesFilled % pullIntoDescriptor.elementSize === 0);
+    if (!pullIntoDescriptor.readFully) {
+      assert(pullIntoDescriptor.bytesFilled === 0);
+    }
     done = true;
   }
 
@@ -1377,7 +1395,9 @@ function ReadableByteStreamControllerFillPullIntoDescriptorFromQueue(controller,
   let ready = false;
   if (maxAlignedBytes > currentAlignedBytes) {
     totalBytesToCopyRemaining = maxAlignedBytes - pullIntoDescriptor.bytesFilled;
-    ready = true;
+    if (!pullIntoDescriptor.readFully || maxAlignedBytes === pullIntoDescriptor.byteLength) {
+      ready = true;
+    }
   }
 
   const queue = controller._queue;
@@ -1406,7 +1426,11 @@ function ReadableByteStreamControllerFillPullIntoDescriptorFromQueue(controller,
   if (ready === false) {
     assert(controller._queueTotalSize === 0);
     assert(pullIntoDescriptor.bytesFilled > 0);
-    assert(pullIntoDescriptor.bytesFilled < pullIntoDescriptor.elementSize);
+    if (pullIntoDescriptor.readFully) {
+      assert(pullIntoDescriptor.bytesFilled < pullIntoDescriptor.byteLength);
+    } else {
+      assert(pullIntoDescriptor.bytesFilled < pullIntoDescriptor.elementSize);
+    }
   }
 
   return ready;
@@ -1483,7 +1507,7 @@ function ReadableByteStreamControllerProcessPullIntoDescriptorsUsingQueue(contro
   }
 }
 
-function ReadableByteStreamControllerPullInto(controller, view, readIntoRequest) {
+function ReadableByteStreamControllerPullInto(controller, view, readIntoRequest, readFully = false) {
   const stream = controller._stream;
 
   let elementSize = 1;
@@ -1509,7 +1533,8 @@ function ReadableByteStreamControllerPullInto(controller, view, readIntoRequest)
     bytesFilled: 0,
     elementSize,
     viewConstructor: ctor,
-    readerType: 'byob'
+    readerType: 'byob',
+    readFully
   };
 
   if (controller._pendingPullIntos.length > 0) {
@@ -1580,7 +1605,7 @@ function ReadableByteStreamControllerRespond(controller, bytesWritten) {
 }
 
 function ReadableByteStreamControllerRespondInClosedState(controller, firstDescriptor) {
-  assert(firstDescriptor.bytesFilled === 0);
+  assert(firstDescriptor.bytesFilled % firstDescriptor.elementSize === 0);
 
   const stream = controller._stream;
   if (ReadableStreamHasBYOBReader(stream) === true) {
@@ -1597,6 +1622,10 @@ function ReadableByteStreamControllerRespondInReadableState(controller, bytesWri
   ReadableByteStreamControllerFillHeadPullIntoDescriptor(controller, bytesWritten, pullIntoDescriptor);
 
   if (pullIntoDescriptor.bytesFilled < pullIntoDescriptor.elementSize) {
+    return;
+  }
+
+  if (pullIntoDescriptor.readFully && pullIntoDescriptor.bytesFilled < pullIntoDescriptor.byteLength) {
     return;
   }
 
