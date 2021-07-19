@@ -1508,7 +1508,7 @@ function ReadableByteStreamControllerProcessPullIntoDescriptorsUsingQueue(contro
   }
 }
 
-function ReadableByteStreamControllerPullInto(controller, view, readIntoRequest, readFully = false) {
+function ReadableByteStreamControllerPullInto(controller, view, readIntoRequest, readFully) {
   const stream = controller._stream;
 
   let elementSize = 1;
