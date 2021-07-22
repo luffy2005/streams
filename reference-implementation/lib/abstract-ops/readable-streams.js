@@ -1383,10 +1383,6 @@ function ReadableByteStreamControllerFillHeadPullIntoDescriptor(controller, size
 }
 
 function ReadableByteStreamControllerFillPullIntoDescriptorFromQueue(controller, pullIntoDescriptor) {
-  const elementSize = pullIntoDescriptor.elementSize;
-
-  const currentAlignedBytes = pullIntoDescriptor.bytesFilled - pullIntoDescriptor.bytesFilled % elementSize;
-
   const maxBytesToCopy = Math.min(controller._queueTotalSize,
                                   pullIntoDescriptor.byteLength - pullIntoDescriptor.bytesFilled);
   const maxBytesFilled = pullIntoDescriptor.bytesFilled + maxBytesToCopy;
@@ -1394,6 +1390,7 @@ function ReadableByteStreamControllerFillPullIntoDescriptorFromQueue(controller,
   let totalBytesToCopyRemaining = maxBytesToCopy;
   let ready = false;
   if (pullIntoDescriptor.readFully) {
+    assert(pullIntoDescriptor.bytesFilled < pullIntoDescriptor.byteLength);
     // A descriptor for a readFully() request that is not yet completely filled will stay at the head of the queue,
     // so the underlying source can keep filling it.
     if (maxBytesFilled >= pullIntoDescriptor.byteLength) {
@@ -1401,8 +1398,9 @@ function ReadableByteStreamControllerFillPullIntoDescriptorFromQueue(controller,
       ready = true;
     }
   } else {
-    const maxAlignedBytes = maxBytesFilled - maxBytesFilled % elementSize;
-    if (maxAlignedBytes > currentAlignedBytes) {
+    assert(pullIntoDescriptor.bytesFilled < pullIntoDescriptor.elementSize);
+    const maxAlignedBytes = maxBytesFilled - maxBytesFilled % pullIntoDescriptor.elementSize;
+    if (maxAlignedBytes > 0) {
       totalBytesToCopyRemaining = maxAlignedBytes - pullIntoDescriptor.bytesFilled;
       ready = true;
     }
