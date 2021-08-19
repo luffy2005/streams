@@ -98,7 +98,7 @@ exports.implementation = class ReadableByteStreamControllerImpl {
         elementSize: 1,
         viewConstructor: Uint8Array,
         readerType: 'default',
-        readFully: false
+        fill: false
       };
 
       this._pendingPullIntos.push(pullIntoDescriptor);
