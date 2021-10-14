@@ -205,9 +205,8 @@ function ReadableStreamPipeTo(source, dest, preventClose, preventAbort, preventC
             reader,
             {
               chunkSteps: chunk => {
-                currentWrite = transformPromiseWith(
-                  WritableStreamDefaultWriterWrite(writer, chunk), undefined, () => {}
-                );
+                currentWrite = WritableStreamDefaultWriterWrite(writer, chunk);
+                setPromiseIsHandledToTrue(currentWrite);
                 resolveRead(false);
               },
               closeSteps: () => resolveRead(true),
@@ -259,13 +258,18 @@ function ReadableStreamPipeTo(source, dest, preventClose, preventAbort, preventC
     setPromiseIsHandledToTrue(pipeLoop());
 
     function waitForWritesToFinish() {
-      // Another write may have started while we were waiting on this currentWrite, so we have to be sure to wait
-      // for that too.
-      const oldCurrentWrite = currentWrite;
-      return transformPromiseWith(
-        currentWrite,
-        () => oldCurrentWrite !== currentWrite ? waitForWritesToFinish() : undefined
-      );
+      let oldCurrentWrite;
+      return promiseResolvedWith(check());
+
+      function check() {
+        // Another write may have started while we were waiting on this currentWrite,
+        // so we have to be sure to wait for that too.
+        if (oldCurrentWrite !== currentWrite) {
+          oldCurrentWrite = currentWrite;
+          return transformPromiseWith(currentWrite, check, check);
+        }
+        return undefined;
+      }
     }
 
     function isOrBecomesErrored(stream, promise, action) {
