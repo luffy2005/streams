@@ -2355,7 +2355,7 @@ create them does not matter.
    1. If |canceled1| is false or |canceled2| is false, [=resolve=] |cancelPromise| with undefined.
  1. Let |pullWithDefaultReader| be the following steps:
   1. If |reader| [=implements=] {{ReadableStreamBYOBReader}},
-   1. Assert: |reader|.[=ReadableStreamBYOBReader/[[readIntoRequests]]=] is [=list/is empty|empty=].
+   1. Assert: |reader|.[=ReadableStreamBYOBReader/[[readIntoRequests]]=] [=list/is empty=].
    1. Perform ! [$ReadableStreamReaderGenericRelease$](|reader|).
    1. Set |reader| to ! [$AcquireReadableStreamDefaultReader$](|stream|).
    1. Perform |forwardReaderError|, given |reader|.
@@ -2410,7 +2410,7 @@ create them does not matter.
   1. Perform ! [$ReadableStreamDefaultReaderRead$](|reader|, |readRequest|).
  1. Let |pullWithBYOBReader| be the following steps, given |view| and |forBranch2|:
   1. If |reader| [=implements=] {{ReadableStreamDefaultReader}},
-   1. Assert: |reader|.[=ReadableStreamDefaultReader/[[readRequests]]=] is [=list/is empty|empty=].
+   1. Assert: |reader|.[=ReadableStreamDefaultReader/[[readRequests]]=] [=list/is empty=].
    1. Perform ! [$ReadableStreamReaderGenericRelease$](|reader|).
    1. Set |reader| to ! [$AcquireReadableStreamBYOBReader$](|stream|).
    1. Perform |forwardReaderError|, given |reader|.
@@ -3086,7 +3086,8 @@ The following abstract operations support the implementation of the
  1. If |controller|.[=ReadableByteStreamController/[[queueTotalSize]]=] > 0,
   1. Set |controller|.[=ReadableByteStreamController/[[closeRequested]]=] to true.
   1. Return.
- 1. If |controller|.[=ReadableByteStreamController/[[pendingPullIntos]]=] is not empty,
+ 1. If |controller|.[=ReadableByteStreamController/[[pendingPullIntos]]=] is not
+    [=list/is empty|empty=],
   1. Let |firstPendingPullInto| be
      |controller|.[=ReadableByteStreamController/[[pendingPullIntos]]=][0].
   1. If |firstPendingPullInto|'s [=pull-into descriptor/bytes filled=] > 0,
@@ -3155,8 +3156,7 @@ The following abstract operations support the implementation of the
  1. Perform ! [$ReadableByteStreamControllerInvalidateBYOBRequest$](|controller|).
  1. If ! [$ReadableStreamHasDefaultReader$](|stream|) is true
   1. If ! [$ReadableStreamGetNumReadRequests$](|stream|) is 0,
-   1. Assert: |controller|.[=ReadableByteStreamController/[[pendingPullIntos]]=] is
-      [=list/is empty|empty=].
+   1. Assert: |controller|.[=ReadableByteStreamController/[[pendingPullIntos]]=] [=list/is empty=].
    1. Perform ! [$ReadableByteStreamControllerEnqueueChunkToQueue$](|controller|,
       |transferredBuffer|, |byteOffset|, |byteLength|).
   1. Otherwise,
@@ -3376,7 +3376,8 @@ The following abstract operations support the implementation of the
     |byteLength|, [=pull-into descriptor/bytes filled=] 0, [=pull-into descriptor/element size=]
     |elementSize|, [=pull-into descriptor/view constructor=] |ctor|, and [=pull-into
     descriptor/reader type=] "`byob`".
- 1. If |controller|.[=ReadableByteStreamController/[[pendingPullIntos]]=] is not empty,
+ 1. If |controller|.[=ReadableByteStreamController/[[pendingPullIntos]]=] is not
+    [=list/is empty|empty=],
   1. [=list/Append=] |pullIntoDescriptor| to
      |controller|.[=ReadableByteStreamController/[[pendingPullIntos]]=].
   1. Perform ! [$ReadableStreamAddReadIntoRequest$](|stream|, |readIntoRequest|).
@@ -3410,7 +3411,8 @@ The following abstract operations support the implementation of the
  id="readable-byte-stream-controller-respond">ReadableByteStreamControllerRespond(|controller|,
  |bytesWritten|)</dfn> performs the following steps:
 
- 1. Assert: |controller|.[=ReadableByteStreamController/[[pendingPullIntos]]=] is not empty.
+ 1. Assert: |controller|.[=ReadableByteStreamController/[[pendingPullIntos]]=] is not
+    [=list/is empty|empty=].
  1. Let |firstDescriptor| be |controller|.[=ReadableByteStreamController/[[pendingPullIntos]]=][0].
  1. Let |state| be
     |controller|.[=ReadableByteStreamController/[[stream]]=].[=ReadableStream/[[state]]=].
@@ -4747,7 +4749,7 @@ the {{WritableStream}}'s public API.
  performs the following steps:
 
  1. Assert: |stream|.[=WritableStream/[[inFlightWriteRequest]]=] is undefined.
- 1. Assert: |stream|.[=WritableStream/[[writeRequests]]=] is not empty.
+ 1. Assert: |stream|.[=WritableStream/[[writeRequests]]=] is not [=list/is empty|empty=].
  1. Let |writeRequest| be |stream|.[=WritableStream/[[writeRequests]]=][0].
  1. [=list/Remove=] |writeRequest| from |stream|.[=WritableStream/[[writeRequests]]=].
  1. Set |stream|.[=WritableStream/[[inFlightWriteRequest]]=] to |writeRequest|.
@@ -5012,7 +5014,7 @@ The following abstract operations support the implementation of the
  1. If |state| is "`erroring`",
   1. Perform ! [$WritableStreamFinishErroring$](|stream|).
   1. Return.
- 1. If |controller|.[=WritableStreamDefaultController/[[queue]]=] is empty, return.
+ 1. If |controller|.[=WritableStreamDefaultController/[[queue]]=] [=list/is empty=], return.
  1. Let |value| be ! [$PeekQueueValue$](|controller|).
  1. If |value| is the [=close sentinel=], perform !
     [$WritableStreamDefaultControllerProcessClose$](|controller|).
@@ -5113,7 +5115,7 @@ The following abstract operations support the implementation of the
  1. Let |stream| be |controller|.[=WritableStreamDefaultController/[[stream]]=].
  1. Perform ! [$WritableStreamMarkCloseRequestInFlight$](|stream|).
  1. Perform ! [$DequeueValue$](|controller|).
- 1. Assert: |controller|.[=WritableStreamDefaultController/[[queue]]=] is empty.
+ 1. Assert: |controller|.[=WritableStreamDefaultController/[[queue]]=] [=list/is empty=].
  1. Let |sinkClosePromise| be the result of performing
     |controller|.[=WritableStreamDefaultController/[[closeAlgorithm]]=].
  1. Perform ! [$WritableStreamDefaultControllerClearAlgorithms$](|controller|).
